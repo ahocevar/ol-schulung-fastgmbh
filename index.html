@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta http-equiv="pragma" content="no-cache" />
+  <meta http-equiv="cache-control" content="no-cache" />
+  <meta http-equiv="EXPIRES" content="0" />
+
+  <script type="text/javascript" src="libs/v7.2.2-package/dist/ol.js"></script>
+  <link rel="stylesheet" href="libs/v7.2.2-package/ol.css">
+  <style>
+    .smallmap{
+      height: 100vh;
+      width: 100vw;
+    }
+  </style>
+  <title>erste Karte</title>
+  <style>
+    .iconElem{
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div style="position: relative;top:10px;height:40px;bottom:10px">
+
+  <a href="verschiebbar.html">Verschiebbar</a>
+
+  <br/>
+</div>
+
+<!--Div-Tag für die Kartenanzeige -->
+<div id="map" class="smallmap"></div>
+<!--<script type="module" src="main.js"></script>-->
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>
