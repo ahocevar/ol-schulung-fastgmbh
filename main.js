@@ -1,5 +1,5 @@
 import './style.css';
-import {Feature, Map, View} from 'ol';
+import {Feature, Map, Overlay, View} from 'ol';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import OSM from 'ol/source/OSM';
@@ -15,6 +15,8 @@ import GeoJSON from 'ol/format/GeoJSON';
 import { containsXY } from 'ol/extent';
 import LayerGroup from 'ol/layer/Group';
 import LayerSwitcher from 'ol-layerswitcher';
+//import MousePosition from 'ol/control/MousePosition';
+import {toStringHDMS} from 'ol/coordinate';
 
 useGeographic();
 
@@ -127,7 +129,16 @@ const layerSwitcher = new LayerSwitcher({
 });
 map.addControl(layerSwitcher);
 
+// const mousePosition = new MousePosition({
+//   coordinateFormat: toStringHDMS,
+//   target: 'mouse-position',
+// });
+// map.addControl(mousePosition);
+
+const mousePositionDiv = document.getElementById('mouse-position');
 map.on('pointermove', (e) => {
+  // mousePositionDiv.style.left = e.pixel[0] + 'px';
+  // mousePositionDiv.style.top = e.pixel[1] + 'px';
   if (e.dragging) {
     return;
   }
@@ -137,6 +148,47 @@ map.on('pointermove', (e) => {
   } else {
     map.getViewport().classList.remove('force-cursor-move');
   }
+});
+
+/**
+ * Elements that make up the popup.
+ */
+const container = document.getElementById('popup');
+const content = document.getElementById('popup-content');
+const closer = document.getElementById('popup-closer');
+
+/**
+ * Create an overlay to anchor the popup to the map.
+ */
+const overlay = new Overlay({
+  element: container,
+  autoPan: {
+    animation: {
+      duration: 250,
+    },
+  },
+});
+overlay.setMap(map);
+
+/**
+ * Add a click handler to hide the popup.
+ * @return {boolean} Don't follow the href.
+ */
+closer.onclick = function () {
+  overlay.setPosition(undefined);
+  closer.blur();
+  return false;
+};
+
+/**
+ * Add a click handler to the map to render the popup.
+ */
+map.on('singleclick', function (evt) {
+  const coordinate = evt.coordinate;
+  const hdms = toStringHDMS(coordinate);
+
+  content.innerHTML = '<p>You clicked here:</p><code>' + hdms + '</code>';
+  overlay.setPosition(coordinate);
 });
 
 let featureBeingDragged;
