@@ -117,32 +117,45 @@ const feature = [
   setIcon([longitude + 0.00005, latitude - 0.0001], 'LoggerL.png')
 ];
 
+const labelsID = (feature) => {
+  return [
+    new Style({
+      image: new Icon(({
+        // Icons werden immer dargestellt, auch wenn sie sich überlagern
+        declutterMode: 'none',
+        anchor: [0.5, 0.96],
+        src: feature.get('icon')
+      }))
+    }),
+    new Style({
+      text: new Text({
+        // Text wird nur dargestellt, wenn er nicht überlagert wird (`declutter: true` am Layer)
+        text: String(feature.getId()),
+        font: '16px sans-serif',
+        textAlign: 'left',
+        offsetX: 10,
+        textBaseline: 'bottom',
+      })
+    })
+  ];
+};
+
+const labelsNone = (feature) => {
+  return new Style({
+    image: new Icon(({
+      // Icons werden immer dargestellt, auch wenn sie sich überlagern
+      declutterMode: 'none',
+      anchor: [0.5, 0.96],
+      src: feature.get('icon')
+    }))
+  });
+};
+
 const icons = new VectorLayer({
   title: 'Icons',
   // Alternative zum automatischen Reinzoomen, wenn nicht alle Labels Platz haben
   declutter: true,
-  style(feature) {
-    return [
-      new Style({
-        image: new Icon(({
-          // Icons werden immer dargestellt, auch wenn sie sich überlagern
-          declutterMode: 'none',
-          anchor: [0.5, 0.96],
-          src: feature.get('icon')
-        }))
-      }),
-      new Style({
-        text: new Text({
-          // Text wird nur dargestellt, wenn er nicht überlagert wird (`declutter: true` am Layer)
-          text: String(feature.getId()),
-          font: '16px sans-serif',
-          textAlign: 'left',
-          offsetX: 10,
-          textBaseline: 'bottom',
-        })
-      })
-    ];
-  },
+  style: labelsID,
   source: new VectorSource({
     features: feature
   })
@@ -469,6 +482,22 @@ tool.forEach((option) => {
         break;
       case 'distance':
         measureDistance.setActive(true);
+        break;
+      default:
+        // do nothing
+    }
+  });
+});
+
+const labels = document.getElementById('labels')['selected-label'];
+labels.forEach((option) => {
+  option.addEventListener('change', (e) => {
+    switch(e.target.value) {
+      case 'none':
+        icons.setStyle(labelsNone);
+        break;
+      case 'id':
+        icons.setStyle(labelsID);
         break;
       default:
         // do nothing

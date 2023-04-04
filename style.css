@@ -62,7 +62,7 @@ html, body {
   content: "✖";
 }
 
-#tools {
+#controls {
   position: absolute;
   top: 200px;
   left: 1em;
