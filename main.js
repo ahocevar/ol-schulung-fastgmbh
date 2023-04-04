@@ -439,6 +439,11 @@ map.addInteraction(measureDistance);
 function deactivateAllInteractions() {
   translate.setActive(false);
   boxZoom.setActive(false);
+  modify.setActive(false);
+  draw.setActive(false);
+  snap.setActive(false);
+  measureRadius.setActive(false);
+  measureDistance.setActive(false);
 }
 
 const tool = document.getElementById('tools')['selected-tool'];
