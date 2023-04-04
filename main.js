@@ -4,19 +4,39 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import OSM from 'ol/source/OSM';
 import XYZ from 'ol/source/XYZ';
-import WMTS from 'ol/source/WMTS';
 import TileLayer from 'ol/layer/Tile';
 import { useGeographic } from 'ol/proj';
 import Style from 'ol/style/Style';
 import Icon from 'ol/style/Icon';
-import { Point } from 'ol/geom';
-import { Translate } from 'ol/interaction';
+import CircleStyle from 'ol/style/Circle';
+import { LineString, Point, Polygon } from 'ol/geom';
+import { DragZoom, Draw, Modify, Snap, Translate, defaults } from 'ol/interaction';
 import GeoJSON from 'ol/format/GeoJSON';
 import { containsXY } from 'ol/extent';
 import LayerGroup from 'ol/layer/Group';
 import LayerSwitcher from 'ol-layerswitcher';
 //import MousePosition from 'ol/control/MousePosition';
 import {toStringHDMS} from 'ol/coordinate';
+import Text from 'ol/style/Text';
+import Stroke from 'ol/style/Stroke';
+import Fill from 'ol/style/Fill';
+import { primaryAction } from 'ol/events/condition';
+import { asArray } from 'ol/color';
+import { getDistance, getLength } from 'ol/sphere';
+import RegularShape from 'ol/style/RegularShape';
+
+let featureId = 1000;
+function setIcon(coord, img) {
+  const marker = new Point(coord);
+  const featureMarker = new Feature(marker);
+  featureMarker.setId(featureId++);
+  featureMarker.set('icon', './images/' + img);
+  featureMarker.set('xyz', 'mein wert');
+  featureMarker.getGeometry().on('change', function (e) {
+    featureBeingDragged = featureMarker;
+  });
+  return featureMarker;
+}
 
 useGeographic();
 
@@ -97,26 +117,69 @@ const feature = [
   setIcon([longitude + 0.00005, latitude - 0.0001], 'LoggerL.png')
 ];
 
-const vector = new VectorLayer({
+const icons = new VectorLayer({
   title: 'Icons',
+  // Alternative zum automatischen Reinzoomen, wenn nicht alle Labels Platz haben
+  declutter: true,
   style(feature) {
-    return new Style({
-      image: new Icon(({
-        anchor: [0.5, 0.96],
-        src: feature.get('icon')
-      }))
-    });
+    return [
+      new Style({
+        image: new Icon(({
+          // Icons werden immer dargestellt, auch wenn sie sich überlagern
+          declutterMode: 'none',
+          anchor: [0.5, 0.96],
+          src: feature.get('icon')
+        }))
+      }),
+      new Style({
+        text: new Text({
+          // Text wird nur dargestellt, wenn er nicht überlagert wird (`declutter: true` am Layer)
+          text: String(feature.getId()),
+          font: '16px sans-serif',
+          textAlign: 'left',
+          offsetX: 10,
+          textBaseline: 'bottom',
+        })
+      })
+    ];
   },
   source: new VectorSource({
     features: feature
   })
-})
+});
+
+const polygonFeature = new Feature(new Polygon([[[9.44564, 48.98198], [9.44574, 48.98232], [9.44585, 48.98228], [9.44668, 48.98201], [9.44564, 48.98198]]]));
+polygonFeature.set('color', 'green');
+
+const polygons = new VectorLayer({
+  title: 'Polygone',
+  source: new VectorSource({
+    features: [polygonFeature]
+  }),
+  style(feature) {
+    const baseColor = asArray(feature.get('color') || 'pink');
+    return new Style({
+      stroke: new Stroke({
+        color: baseColor,
+        width: 2
+      }),
+      fill: new Fill({
+        // `...` ist die Spread-Syntax, siehe https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax
+        color: [...baseColor.slice(0, 3), 0.3]
+      })
+    });
+  }
+});
 
 const map = new Map({
   target: 'map',
+  interactions: defaults({
+    shiftDragZoom: false
+  }),
   layers: [
     baseLayerGroup,
-    vector
+    polygons,
+    icons
   ],
   view: new View({
     center: centralCoord,
@@ -125,6 +188,7 @@ const map = new Map({
 });
 
 const layerSwitcher = new LayerSwitcher({
+  activationMode: 'click',
   groupSelectStyle: 'group'
 });
 map.addControl(layerSwitcher);
@@ -184,20 +248,49 @@ closer.onclick = function () {
  * Add a click handler to the map to render the popup.
  */
 map.on('singleclick', function (evt) {
+  if (activeTool !== 'drag' && activeTool !== 'zoom') {
+    return;
+  }
+  const [feature] = map.getFeaturesAtPixel(evt.pixel);
+  // ist equivalent zu
+  // const features = map.getFeaturesAtPixel(evt.pixel);
+  // const feature = features[0];
+  let featureInfo = '';
+  if (feature) {
+    const properties = feature.getProperties();
+    // Objekt mit folgendem Aufbau:
+    // {
+    //   "geometry": ...
+    //   "icon": "Repeater_30_30.png",
+    //   "xyz": "mein wert"
+    // }
+    featureInfo = Object.keys(properties).map((key) => {
+      if (key === feature.getGeometryName()) {
+        return `<p>Koordinaten: ${properties[key].getCoordinates()}</p>`
+      }
+      return `<p>${key}: ${properties[key]}</p>`;
+    }).join('');
+    // ['1', 'a'].join('') => '1a'
+    // ['1', 'a'].join(' ') => '1 a'
+
+  }
   const coordinate = evt.coordinate;
   const hdms = toStringHDMS(coordinate);
 
-  content.innerHTML = '<p>You clicked here:</p><code>' + hdms + '</code>';
+  content.innerHTML = '<p>You clicked here:</p><code>' + hdms + '</code>' + featureInfo;
   overlay.setPosition(coordinate);
 });
 
 let featureBeingDragged;
 // Verschieben der Marker
 const translate = new Translate({
-  features: vector.getSource().getFeaturesCollection()
+  features: icons.getSource().getFeaturesCollection()
 });
 map.addInteraction(translate);
 translate.on('translateend', () => {
+  if (!featureBeingDragged) {
+    return;
+  }
   const geojson = geojsonFormat.writeFeatureObject(featureBeingDragged);
   // const xhr = new XMLHttpRequest();
   // xhr.open('PUT', 'http://myServer/feature/abc.php');
@@ -211,13 +304,169 @@ translate.on('translateend', () => {
   console.log(geojson);
 });
 
+const boxZoom = new DragZoom({
+  condition: primaryAction
+});
+boxZoom.setActive(false);
+map.addInteraction(boxZoom);
 
-function setIcon(coord, img) {
-  const marker = new Point(coord);
-  const featureMarker = new Feature(marker);
-  featureMarker.set('icon', './images/' + img);
-  featureMarker.getGeometry().on('change', function (e) {
-    featureBeingDragged = featureMarker;
-  });
-  return featureMarker;
+const polygonSource = polygons.getSource();
+const modify = new Modify({source: polygonSource});
+modify.on('modifyend', (e) => {
+  console.log(geojsonFormat.writeFeatureObject(e.features.item(0)))
+  // Hier AJAX Aufruf zum Speichern des Polygons
+});
+modify.setActive(false);
+map.addInteraction(modify);
+
+const draw = new Draw({
+  source: polygonSource,
+  type: 'Polygon',
+});
+draw.on('drawend', (e) => {
+  // `prompt` durch Color Picker ersetzen
+  const color = prompt('Farbe?');
+  e.feature.set('color', color);
+  console.log(geojsonFormat.writeFeatureObject(e.feature));
+  // Hier AJAX Aufruf zum Speichern des Polygons
+});
+draw.setActive(false);
+map.addInteraction(draw);
+
+const snap = new Snap({source: polygonSource});
+snap.setActive(false);
+map.addInteraction(snap);
+
+const measureRadius = new Draw({
+  type: 'Circle',
+  style(feature) {
+    let length = 0;
+    // Array destructuring, mich interessiert nur der 2. Wert im Array
+    const [,sketch] = measureRadius.getOverlay().getSource().getFeatures();
+    const geometryType = feature.getGeometry().getType();
+    if (sketch && geometryType === 'Circle') {
+      console.log(sketch.getGeometry().getCoordinates());
+      const center = feature.getGeometry().getCenter();
+      const cursor = sketch.getGeometry().getCoordinates();
+      const line = new LineString([center, cursor]);
+      length = getDistance(center, cursor);
+      // Hier entscheiden, ob km oder m, und zusätzlich Anzeige von feet bzw. miles
+      const formattedLength = `${Math.round(length)} m`;
+      // return: style für Kreis + Radius + Text
+      return [
+        new Style({
+          stroke: new Stroke({
+            color: 'rgba(255, 0, 0, 0.5)',
+            width: 2,
+          }),
+        }),
+        new Style({
+          geometry: line,
+          stroke: new Stroke({
+            color: 'rgba(255, 0, 0, 0.5)',
+            width: 2,
+          }),
+          text: new Text({
+            text: formattedLength,
+            font: '16px sans-serif',
+            placement: 'line',
+            textBaseline: 'bottom',
+          })
+        })
+      ]
+    }
+    // return: style für Punkt am Cursor
+    return [
+      new Style({
+        image: new CircleStyle({
+          radius: 5,
+          fill: new Fill({
+            color: 'rgba(255, 255, 255, 0.2)',
+          }),
+          stroke: new Stroke({
+            color: 'rgba(0, 0, 0, 0.5)',
+            width: 2,
+          }),
+        })
+      }),
+    ]
+  }
+});
+measureRadius.setActive(false);
+map.addInteraction(measureRadius);
+
+const measureDistance = new Draw({
+  type: 'LineString',
+  style(feature) {
+    if (feature.getGeometry().getType() === 'Point') {
+      const length = getLength(measureDistance.getOverlay().getSource().getFeatures()[0].getGeometry(), {projection: 'EPSG:4326'});
+      // Formatieren Länge, Umrechnung etc.
+      const formattedLength = `${Math.round(length)} m`;
+      // Style für Punkt am Cursor
+      return new Style({
+        image: new RegularShape({
+          radius: 5,
+          points: 4,
+          angle: Math.PI / 4,
+          fill: new Fill({
+            color: 'rgba(255, 255, 255, 0.2)',
+          }),
+          stroke: new Stroke({
+            color: 'rgba(0, 0, 0, 0.5)',
+            width: 2,
+          }),
+        }),
+        text: new Text({
+          text: formattedLength,
+          font: '16px sans-serif',
+          textAlign: 'left',
+          offsetX: 10,
+        })
+      });
+    }
+    // Style für Linie
+    return new Style({
+      stroke: new Stroke({
+        color: 'rgba(255, 0, 0, 0.5)',
+        width: 2,
+      }),
+    });
+  }
+});
+measureDistance.setActive(false);
+map.addInteraction(measureDistance);
+
+function deactivateAllInteractions() {
+  translate.setActive(false);
+  boxZoom.setActive(false);
 }
+
+const tool = document.getElementById('tools')['selected-tool'];
+let activeTool = 'drag';
+tool.forEach((option) => {
+  option.addEventListener('change', (e) => {
+    activeTool = e.target.value;
+    deactivateAllInteractions();
+    switch(activeTool) {
+      case 'drag':
+        translate.setActive(true);
+        break;
+      case 'zoom':
+        boxZoom.setActive(true);
+        break;
+      case 'polygon':
+        modify.setActive(true);
+        draw.setActive(true);
+        snap.setActive(true);
+        break;
+      case 'radius':
+        measureRadius.setActive(true);
+        break;
+      case 'distance':
+        measureDistance.setActive(true);
+        break;
+      default:
+        // do nothing
+    }
+  });
+});

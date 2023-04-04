@@ -6,8 +6,6 @@
   <meta http-equiv="cache-control" content="no-cache" />
   <meta http-equiv="EXPIRES" content="0" />
 
-  <script type="text/javascript" src="libs/v7.2.2-package/dist/ol.js"></script>
-  <link rel="stylesheet" href="libs/v7.2.2-package/ol.css">
   <style>
     .smallmap{
       height: 100vh;
@@ -34,6 +32,13 @@
 <div id="popup" class="ol-popup">
   <a href="#" id="popup-closer" class="ol-popup-closer"></a>
   <div id="popup-content"></div>
+</div>
+<form id="tools">
+  <input type="radio" name="selected-tool" id="tool-drag" value="drag" checked="checked">Verschieben</input><br>
+  <input type="radio" name="selected-tool" id="tool-zoom" value="zoom">Box Zoom</input><br>
+  <input type="radio" name="selected-tool" id="tool-radius" value="radius">Messen (Radius)</input><br>
+  <input type="radio" name="selected-tool" id="tool-distance" value="distance">Messen (Distanz)</input><br>
+  <input type="radio" name="selected-tool" id="tool-polygon" value="polygon">Polygon zeichnen</input><br>
 </div>
 <!--<script type="module" src="main.js"></script>-->
 <script type="module" src="./main.js"></script>
