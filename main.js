@@ -412,7 +412,8 @@ const measureDistance = new Draw({
   type: 'LineString',
   style(feature) {
     if (feature.getGeometry().getType() === 'Point') {
-      const length = getLength(measureDistance.getOverlay().getSource().getFeatures()[0].getGeometry(), {projection: 'EPSG:4326'});
+      const [sketch] = measureDistance.getOverlay().getSource().getFeatures();
+      const length = getLength(sketch.getGeometry(), {projection: 'EPSG:4326'});
       // Formatieren Länge, Umrechnung etc.
       const formattedLength = `${Math.round(length)} m`;
       // Style für Punkt am Cursor
