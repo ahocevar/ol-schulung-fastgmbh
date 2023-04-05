@@ -151,14 +151,36 @@ const labelsNone = (feature) => {
   });
 };
 
-const icons = new VectorLayer({
-  title: 'Icons',
+let iconStyle = labelsID;
+
+const iconSource = new VectorSource({
+  features: feature
+})
+
+const iconsLogger = new VectorLayer({
+  title: 'Bidi-Logger',
   // Alternative zum automatischen Reinzoomen, wenn nicht alle Labels Platz haben
   declutter: true,
-  style: labelsID,
-  source: new VectorSource({
-    features: feature
-  })
+  // Eventuell hier nicht auf `feature.get('icon')...` filtern, sondern aufgrund eines eigenen Attributs,
+  // z.B. `feature.get('type') === 'Logger'`
+  style: (feature) => feature.get('icon').includes('Logger') && iconStyle(feature),
+  source: iconSource
+});
+const iconsRouter = new VectorLayer({
+  title: 'Router',
+  declutter: true,
+  // Eventuell hier nicht auf `feature.get('icon')...` filtern, sondern aufgrund eines eigenen Attributs,
+  // z.B. `feature.get('type') === 'Router'`
+  style: (feature) => feature.get('icon').includes('Repeater') && iconStyle(feature),
+  source: iconSource
+});
+const iconsSmartbridge = new VectorLayer({
+  title: 'Smartbridge',
+  declutter: true,
+  // Eventuell hier nicht auf `feature.get('icon')...` filtern, sondern aufgrund eines eigenen Attributs,
+  // z.B. `feature.get('type') === 'Smartbridge'`
+  style: (feature) => feature.get('icon').includes('Master') && iconStyle(feature),
+  source: iconSource
 });
 
 const polygonFeature = new Feature(new Polygon([[[9.44564, 48.98198], [9.44574, 48.98232], [9.44585, 48.98228], [9.44668, 48.98201], [9.44564, 48.98198]]]));
@@ -192,7 +214,9 @@ const map = new Map({
   layers: [
     baseLayerGroup,
     polygons,
-    icons
+    iconsLogger,
+    iconsRouter,
+    iconsSmartbridge
   ],
   view: new View({
     center: centralCoord,
@@ -297,7 +321,7 @@ map.on('singleclick', function (evt) {
 let featureBeingDragged;
 // Verschieben der Marker
 const translate = new Translate({
-  features: icons.getSource().getFeaturesCollection()
+  features: iconSource.getFeaturesCollection()
 });
 map.addInteraction(translate);
 translate.on('translateend', () => {
@@ -495,10 +519,14 @@ labels.forEach((option) => {
   option.addEventListener('change', (e) => {
     switch(e.target.value) {
       case 'none':
-        icons.setStyle(labelsNone);
+        iconStyle = labelsNone;
+        // Redraw der Icons, damit die Änderung des iconStyle wirksam wird
+        iconSource.changed();
         break;
       case 'id':
-        icons.setStyle(labelsID);
+        iconStyle = labelsID;
+        // Redraw der Icons, damit die Änderung des iconStyle wirksam wird
+        iconSource.changed();
         break;
       default:
         // do nothing
