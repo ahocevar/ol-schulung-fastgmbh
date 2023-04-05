@@ -33,6 +33,7 @@
   <a href="#" id="popup-closer" class="ol-popup-closer"></a>
   <div id="popup-content"></div>
 </div>
+<div id="search-overlay"></div>
 <div id="controls">
   <form id="tools">
     <input type="radio" name="selected-tool" id="tool-drag" value="drag" checked="checked">Verschieben</input><br>
@@ -45,6 +46,12 @@
   <form id="labels">
     <input type="radio" name="selected-label" id="label-none" value="none">Keine Beschriftung</input><br>
     <input type="radio" name="selected-label" id="label-id" value="id" checked="checked">Beschriftung: ID</input><br>
+  </form>
+  <hr>
+  <form id="search">
+    <input type="text" id="search-input" placeholder="Suche nach Objekt-ID">
+    <input type="reset" id="search-reset" value="X">
+    <input type="submit" id="search-button" value="Suchen">
   </form>
 </div>
 <!--<script type="module" src="main.js"></script>-->

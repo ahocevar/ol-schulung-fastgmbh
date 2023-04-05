@@ -324,6 +324,10 @@ const translate = new Translate({
   features: iconSource.getFeaturesCollection()
 });
 map.addInteraction(translate);
+translate.on('translatestart', (e) => {
+  // Suchkreis und Suchfeld löschen, weil die Position nicht mehr aktuell ist
+  search.reset();
+});
 translate.on('translateend', () => {
   if (!featureBeingDragged) {
     return;
@@ -532,4 +536,39 @@ labels.forEach((option) => {
         // do nothing
     }
   });
+});
+
+// Overlay für Kreis zum Markieren des Suchergebnisses
+const searchOverlay = new Overlay({
+  element: document.getElementById('search-overlay'),
+  positioning: 'center-center',
+  stopEvent: false,
+  insertFirst: true
+});
+searchOverlay.setMap(map);
+
+// Suchfunktion
+const search = document.getElementById('search');
+search.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const searchValue = document.getElementById('search-input').value;
+  if (searchValue === '') {
+    return;
+  }
+  const searchResult = iconSource.getFeatures().find((feature) => {
+    return String(feature.getId()) === searchValue;
+  });
+  if (searchResult) {
+    const coordinates = searchResult.getGeometry().getCoordinates();
+    searchOverlay.setPosition(coordinates);
+    map.getView().animate({
+      center: coordinates,
+      zoom: 18,
+      duration: 500,
+    });
+  }
+});
+search.addEventListener('reset', (e) => {
+  // Bei Reset der Suche wird der Kreis entfernt
+  searchOverlay.setPosition(undefined);
 });

@@ -62,6 +62,18 @@ html, body {
   content: "✖";
 }
 
+#search-overlay {
+  position: absolute;
+  background: transparent;
+  left: -28px;
+  top: -28px;
+  /* Die folgenden Zeilen erzeugen einen Kreis */
+  border: 4px solid rgba(255, 0, 0, 0.7);
+  border-radius: 28px;
+  width: 48px;
+  height: 48px;
+}
+
 #controls {
   position: absolute;
   top: 200px;
